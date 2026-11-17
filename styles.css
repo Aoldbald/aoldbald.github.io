@@ -1,0 +1,263 @@
+:root { --ink:#4a4036; --paper:#fbf6ec; --accent:#e98a6b; --pink:#f4b6c2; --blue:#8fb8de; --cream:#f6ecd6;
+  --water:#a8d8d3;
+  /* 字体：先 Fredoka（子集里没有中文，汉字自动落到 ZCOOL KuaiLe）；ZCOOL 只有 400，不许浏览器假加粗 */
+  --zh:Fredoka, "ZCOOL KuaiLe", sans-serif; font-synthesis-weight:none;
+  --pop:cubic-bezier(.3,1.4,.5,1); --panel-w:440px; --ui-w:440px; --drawer-peek:.5; --drawer-full:.85;
+  --ring:rgba(74,64,54,.1); --edge:rgba(74,64,54,.08); --glass:rgba(251,246,236,.92);   /* 按钮细边、卡片外侧阴影、照片上的半透明按钮 */
+  color-scheme:light; }
+/* 深色（月光）：<html data-theme="dark">，由 index.html 头部小脚本 / src/theme.js 设置 */
+:root[data-theme="dark"] { --ink:#f2e9da; --paper:#2c2a2b; --cream:#3a3634; --water:#1d3640; --accent:#e98a6b;
+  --ring:rgba(242,233,218,.12); --edge:rgba(0,0,0,.22); --glass:rgba(44,42,43,.9); color-scheme:dark; }
+[data-theme="dark"] .label small, [data-theme="dark"] .card-meta, [data-theme="dark"] .card-count { opacity:.7; }
+html, body { margin:0; height:100%; overflow:hidden; background:var(--water); color:var(--ink);
+  font-family:var(--zh); }
+#c { position:fixed; inset:0; display:block; touch-action:none; }
+
+#title { position:fixed; top:14px; left:0; right:0; z-index:4; text-align:center; pointer-events:none;
+  transition:opacity .4s, transform .4s; }
+.focused #title { opacity:0; transform:translateY(-12px); }   /* 聚焦时让位给标签 */
+#title h1 { margin:0; font-size:clamp(28px, 5vw, 50px); font-weight:600; }
+#title p { margin:2px 0 0; font-size:14px; opacity:.65; font-family:var(--zh); }
+
+#labels { position:fixed; inset:0; z-index:5; pointer-events:none; }
+.label { position:fixed; left:0; top:0; pointer-events:auto; transform:translate(-50%, -100%); background:var(--paper); color:var(--ink);
+  border:0; padding:.27em .8em; border-radius:14px; font-size:var(--label-fs, 15px); box-shadow:0 3px 0 rgba(0,0,0,.13);
+  cursor:pointer; width:max-content; max-width:min(42vw, var(--label-max, 11em)); text-wrap:balance; line-height:1.2;   /* 长地名换行，别伸出屏幕 */
+  font-family:var(--zh); user-select:none;
+  transition:background .2s, color .2s, opacity .25s; }
+/* 字号 --label-fs、最宽 --label-max 由 ui.js 按岛在屏幕上的大小写入（同排两个标签碰不到；1440p 跟着放大） */
+[data-layout="panel"] .label { max-width:min(16em, var(--label-max, 100vw)); }
+.label:hover { background:var(--cream); }
+.label:focus-visible, #bar button:focus-visible, #card button:focus-visible { outline:3px solid var(--blue); outline-offset:2px; }
+.label.covered { opacity:0; pointer-events:none; }
+.label.active { background:var(--accent); color:#fff; box-shadow:0 3px 0 #c96f52; }
+.label-name { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }   /* 太长的地名最多两行，全名在卡片里 */
+.label small { display:block; font-size:max(10px, .735em); opacity:.6; text-align:center; font-family:var(--zh); }   /* ？？？ 是全角，要 ZCOOL 兜底 */
+
+#bar { position:fixed; z-index:10; left:16px; bottom:16px; display:flex; gap:8px; flex-wrap:wrap; }
+#bar button { font-family:var(--zh); border:0; border-radius:999px;
+  padding:9px 16px; background:var(--paper); color:var(--ink); box-shadow:0 3px 0 rgba(0,0,0,.13);
+  cursor:pointer; font-size:15px; }
+
+/* 🎵 背景音乐开关：关掉时变淡并加一道斜杠 */
+#music-btn, #theme-btn { position:relative; padding:9px 13px; }
+/* 🌙/☀️ 深色开关：图标按当前主题画（首帧前 data-theme 就定好了，不会先显示错的） */
+#theme-btn::before { content:"🌙"; }
+[data-theme="dark"] #theme-btn::before { content:"☀️"; }
+#music-btn[aria-pressed="false"] { opacity:.6; }
+#music-btn[aria-pressed="false"]::after { content:""; position:absolute; left:50%; top:50%; width:24px; height:3px;
+  border-radius:2px; background:var(--ink); transform:translate(-50%, -50%) rotate(-45deg); }
+
+#fatal { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:24px; box-sizing:border-box;
+  background:var(--paper); color:var(--ink); text-align:center; font-size:18px; line-height:1.7;
+  font-family:var(--zh); }
+#fatal[hidden] { display:none; }
+#loading { position:fixed; left:50%; top:50%; z-index:50; transform:translate(-50%, -50%); padding:10px 20px;
+  border-radius:999px; background:var(--paper); color:var(--ink); box-shadow:0 3px 0 rgba(0,0,0,.13);
+  font-family:var(--zh); font-size:16px; pointer-events:none;
+  width:max-content; max-width:calc(100vw - 72px); text-align:center; line-height:1.5; }
+#loading[hidden] { display:none; }
+
+/* ---------- 卡片：宽屏右侧面板 / 手机底部抽屉（只看 data-layout、--panel-w 面板宽、--ui-w 字号基准） ---------- */
+#card { position:fixed; z-index:20; box-sizing:border-box; display:flex; flex-direction:column;
+  background:var(--paper); color:var(--ink); --island:var(--accent);
+  transition:transform .55s var(--pop); }
+#card[data-state="closed"] { transition:transform .35s cubic-bezier(.5,0,.75,0); }
+#card.dragging { transition:none; }
+/* 弹出时会冲过头一点：外侧补一截纸，免得露出缝 */
+#card::after { content:""; position:absolute; background:var(--paper); }
+
+.card-body { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+  scrollbar-width:thin; scrollbar-color:var(--cream) transparent; }
+.card-gallery { position:relative; border-radius:18px; overflow:hidden; aspect-ratio:4 / 3;
+  background:linear-gradient(135deg, var(--island), var(--paper) 115%);
+  box-shadow:inset 0 0 0 1px var(--ring); }
+.card-ph { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:6px; color:#fff; font-family:var(--zh); font-size:15px; text-shadow:0 1px 0 rgba(74,64,54,.18); }
+.card-ph-icon { font-size:40px; line-height:1; }
+
+/* 卡片里的照片：一屏一张的横向 scroll-snap 条。平时横竖都放给浏览器（竖着滑滚正文）；
+   抽屉 peek 时 .card-body 是 touch-action:none，这里只放开横向滑，竖着滑交给 ui.js 拖抽屉 */
+.gal-strip { position:absolute; inset:0; display:flex; overflow-x:auto; overflow-y:hidden;
+  scroll-snap-type:x mandatory; overscroll-behavior-x:contain; scrollbar-width:none; touch-action:pan-x pan-y; }
+[data-layout="drawer"] #card[data-state="peek"] .gal-strip { touch-action:pan-x; }
+.gal-strip::-webkit-scrollbar { display:none; }
+.gal-slide { position:relative; overflow:hidden; flex:0 0 100%; margin:0; padding:0; border:0; background:none;
+  cursor:zoom-in; scroll-snap-align:start; scroll-snap-stop:always; }
+/* 照片完整显示不裁切；两边 / 上下的空白铺同一张照片放大 + 模糊的版本，不露底色 */
+.gal-slide img { display:block; width:100%; height:100%; }
+.gal-photo { position:relative; object-fit:contain; }
+.gal-bg { position:absolute; inset:0; object-fit:cover; transform:scale(1.25); pointer-events:none;
+  filter:blur(24px) saturate(1.15) brightness(.94); }
+.gal-slide:focus-visible { outline:3px solid var(--blue); outline-offset:-3px; }
+.gal-dots { position:absolute; left:0; right:0; bottom:10px; display:flex; justify-content:center; gap:6px;
+  pointer-events:none; }
+.gal-dots span { width:7px; height:7px; border-radius:4px; background:rgba(251,246,236,.65);
+  box-shadow:0 1px 3px rgba(40,34,28,.35); transition:width .25s var(--pop), background .25s; }
+.gal-dots span.on { width:18px; background:#fff; }
+.gal-prev, .gal-next { display:none; position:absolute; top:50%; width:36px; height:36px; margin-top:-18px;
+  padding:0; border:0; border-radius:50%; background:var(--glass); color:var(--ink);
+  box-shadow:0 3px 0 rgba(0,0,0,.13); cursor:pointer;
+  opacity:.75; transition:opacity .2s, transform .15s; }
+.gal-prev { left:10px; } .gal-next { right:10px; }
+.card-gallery:hover .gal-prev, .card-gallery:hover .gal-next { opacity:1; }
+.gal-prev:hover, .gal-next:hover { transform:scale(1.08); }
+.gal-prev:disabled, .gal-next:disabled { opacity:0 !important; pointer-events:none; }
+@media (hover:hover) { .gal-prev, .gal-next { display:block; } }
+/* 箭头用边框画（Fredoka 里没有尖括号字形） */
+.gal-prev::before, .gal-next::before, .lb-prev::before, .lb-next::before { content:""; position:absolute;
+  left:50%; top:50%; width:28%; height:28%; border:solid currentColor; border-width:0 0 3px 3px; border-radius:2px;
+  transform:translate(-30%, -50%) rotate(45deg); }
+.gal-next::before, .lb-next::before { transform:translate(-70%, -50%) rotate(-135deg); }   /* 有鼠标才显示箭头，手机靠滑 */
+.card-name { margin:18px 0 0; font-family:var(--zh); font-weight:400; font-size:30px; line-height:1.2; }
+.card-name::after { content:""; display:block; width:44px; height:5px; margin-top:8px; border-radius:3px;
+  background:var(--island); opacity:.8; }
+.card-meta { margin-top:10px; font-size:14px; opacity:.6; font-family:var(--zh); }
+.card-meta:empty { display:none; }
+.card-story { margin:14px 0 0; font-family:var(--zh); font-size:18px; line-height:1.85; white-space:pre-line;
+  overflow-wrap:anywhere; }
+.card-close { position:relative; flex:none; width:38px; height:38px; border:0; border-radius:50%; padding:0;
+  background:var(--paper); color:var(--ink); font:600 24px/1 Fredoka, sans-serif; cursor:pointer;
+  box-shadow:0 3px 0 rgba(0,0,0,.13); transition:transform .15s; }
+.card-close:hover { transform:scale(1.08); }
+.card-close:active { transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,.13); }
+/* 卡片顶上一排：‹ 上一站   2 / 6   下一站 ›  ×（照片在这排下面，不被挡） */
+.card-nav { flex:none; display:flex; align-items:center; gap:8px; }
+.card-count { flex:1; text-align:center; font-size:14px; opacity:.6; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.card-prev, .card-next, .card-share { flex:none; height:38px; border:0; border-radius:999px; padding:0 14px;
+  background:var(--paper); color:var(--ink); font-family:var(--zh); font-size:15px; line-height:1; cursor:pointer;
+  box-shadow:0 3px 0 rgba(0,0,0,.13), inset 0 0 0 1px var(--ring); transition:transform .15s, opacity .2s; }
+.card-prev:not(:disabled):hover, .card-next:not(:disabled):hover, .card-share:hover { transform:scale(1.05); }
+.card-prev:not(:disabled):active, .card-next:not(:disabled):active, .card-share:active { transform:translateY(2px); }
+.card-prev:disabled, .card-next:disabled { opacity:.35; cursor:default; box-shadow:inset 0 0 0 1px var(--ring); }
+/* 箭头和照片箭头一样用边框画 */
+.card-prev::before, .card-next::after { content:""; display:inline-block; width:7px; height:7px; vertical-align:1px;
+  border:solid currentColor; border-width:0 0 2.5px 2.5px; border-radius:1px; }
+.card-prev::before { margin:0 6px 0 3px; transform:rotate(45deg); }
+.card-next::after { margin:0 3px 0 6px; transform:rotate(-135deg); }
+.card-share { align-self:flex-start; height:34px; margin:0 var(--pad, 18px) 12px; font-size:14px; }
+.card-share[hidden] { display:none; }
+[data-layout="panel"] .card-share { margin-left:var(--pad); }
+.card-handle { display:none; }
+
+/* ---------- 分享图弹窗：<dialog id="share"> ---------- */
+#share { position:fixed; inset:0; width:100vw; height:100vh; height:100dvh; max-width:none; max-height:none;
+  margin:0; padding:0; border:0; background:rgba(40,34,28,.97); color:var(--paper);
+  font-family:var(--zh); --ink:#4a4036; --paper:#fbf6ec; }
+#share:not([open]) { display:none; }
+#share::backdrop { background:transparent; }
+.share-panel { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:12px; padding:16px; }
+.share-panel img { display:block; width:auto; height:auto; max-width:100%; max-height:calc(100dvh - 150px);
+  aspect-ratio:4 / 5; object-fit:contain; border-radius:10px; background:rgba(251,246,236,.06);
+  box-shadow:0 14px 40px rgba(0,0,0,.35); }
+.share-close { position:absolute; top:12px; right:14px; width:42px; height:42px; border:0; border-radius:50%;
+  background:var(--paper); color:var(--ink); font:600 26px/1 Fredoka, sans-serif; cursor:pointer;
+  box-shadow:0 3px 0 rgba(0,0,0,.25); }
+.share-save { height:44px; border:0; border-radius:999px; padding:0 26px; background:var(--paper); color:var(--ink);
+  font-family:var(--zh); font-size:16px; cursor:pointer; box-shadow:0 3px 0 rgba(0,0,0,.25); }
+.share-save:disabled { opacity:.5; }
+.share-tip { margin:0; font-size:13px; opacity:.7; }
+#share button:focus-visible { outline:3px solid var(--blue); outline-offset:2px; }
+
+/* 宽屏：右侧贴边全高面板 */
+[data-layout="panel"] #card { top:0; right:0; bottom:0; width:var(--panel-w);
+  border-radius:26px 0 0 26px; box-shadow:-6px 0 0 var(--edge);
+  transform:translateX(calc(100% + 24px)); }
+[data-layout="panel"] #card:not([data-state="closed"]) { transform:none; }
+[data-layout="panel"] #card::after { top:0; bottom:0; left:100%; width:80px; }
+/* 照片区至少 min(62vh − 52px（顶上那排按钮 38 + 间距 14）, 面板宽 × 3/4)；故事短时往下长，把面板填满不留白 */
+[data-layout="panel"] .card-gallery { aspect-ratio:auto; flex:1 0 min(62vh - 52px, calc(var(--panel-w) * .75)); }
+[data-layout="panel"] #card { --pad:calc(var(--ui-w) * .07); }
+[data-layout="panel"] .card-nav { padding:var(--pad) var(--pad) 14px; }
+[data-layout="panel"] .card-body { display:flex; flex-direction:column; padding:0 var(--pad) 40px; }
+[data-layout="panel"] .card-body > :not(.card-gallery) { flex:none; }
+/* 面板占屏宽 60%，字号跟面板宽走（以前按 440px 窄面板算，放大后显得小、右边空一大块） */
+[data-layout="panel"] .card-name { font-size:clamp(32px, calc(var(--panel-w) * .032), 52px); }
+[data-layout="panel"] .card-meta { font-size:clamp(15px, calc(var(--panel-w) * .0135), 22px); }
+[data-layout="panel"] .card-story { font-size:clamp(20px, calc(var(--panel-w) * .0185), 30px); }
+
+/* 手机：底部抽屉，三档 closed / peek / full */
+[data-layout="drawer"] #card { left:0; right:0; bottom:0; height:calc(var(--drawer-full) * 100%);
+  border-radius:24px 24px 0 0; box-shadow:0 -6px 0 var(--edge);
+  transform:translateY(calc(100% + 24px)); }
+[data-layout="drawer"] #card[data-state="peek"] { transform:translateY(calc((1 - var(--drawer-peek) / var(--drawer-full)) * 100%)); }
+[data-layout="drawer"] #card[data-state="full"] { transform:none; }
+[data-layout="drawer"] #card::after { left:0; right:0; top:100%; height:80px; }
+[data-layout="drawer"] .card-handle { display:flex; justify-content:center; align-items:center; flex:none;
+  height:28px; cursor:grab; touch-action:none; }
+[data-layout="drawer"] .card-handle span { width:44px; height:5px; border-radius:3px; background:var(--ink); opacity:.22; }
+[data-layout="drawer"] .card-body { padding:0 18px calc(28px + env(safe-area-inset-bottom)); }
+[data-layout="drawer"] #card[data-state="peek"] .card-body { overflow-y:hidden; touch-action:none; }
+/* 抽屉：这排在拖动条下面，peek 时也看得见；按钮至少 40px 好点。这排没东西可滚，竖着滑交给 ui.js 拖抽屉 */
+[data-layout="drawer"] .card-nav { padding:0 18px 12px; touch-action:none; }
+[data-layout="drawer"] .card-prev, [data-layout="drawer"] .card-next { height:40px; padding:0 12px; }
+[data-layout="drawer"] .card-share { margin:0 18px 10px; }
+[data-layout="drawer"] .card-close { width:40px; height:40px; font-size:22px; }
+[data-layout="drawer"] .card-name { margin-top:14px; font-size:25px; }
+[data-layout="drawer"] .card-story { font-size:17px; line-height:1.8; }
+/* 抽屉打开时左下角按钮会被挡住，干脆藏起来（卡片上有 ×） */
+[data-layout="drawer"].focused #bar { opacity:0; pointer-events:none; }
+#bar { transition:opacity .3s; }
+
+/* ---------- 全屏看照片：<dialog id="lightbox"> ---------- */
+#lightbox { position:fixed; inset:0; width:100vw; height:100vh; height:100dvh; max-width:none; max-height:none;
+  margin:0; padding:0; border:0; overflow:hidden; background:rgba(40,34,28,.92); color:var(--paper);
+  font-family:var(--zh); --px:88px; --py:64px;
+  --ink:#4a4036; --paper:#fbf6ec; }   /* 本来就是深色底：深色模式下也用浅色那套颜色，长得一样 */
+#lightbox[open] { animation:lb-in .25s ease-out; }
+#lightbox::backdrop { background:transparent; }
+@keyframes lb-in { from { opacity:0; } }
+.lightbox-open #labels, .share-open #labels { visibility:hidden; }   /* 3D 标签别透出来 */
+.lb-strip { position:absolute; inset:0; display:flex; overflow-x:auto; overflow-y:hidden;
+  scroll-snap-type:x mandatory; overscroll-behavior:contain; scrollbar-width:none; touch-action:pan-x pinch-zoom; }
+.lb-strip::-webkit-scrollbar { display:none; }
+.lb-slide { flex:0 0 100%; display:flex; align-items:center; justify-content:center;
+  scroll-snap-align:center; scroll-snap-stop:always; }
+/* 宽受屏宽限制，也受屏高 × 宽高比限制（--ar 由 JS 写）；没加载完也是这个尺寸 */
+.lb-slide img { flex:none; display:block; height:auto; object-fit:contain; border-radius:10px;
+  width:min(100vw - 2 * var(--px), (100vh - 2 * var(--py)) * var(--ar));
+  width:min(100vw - 2 * var(--px), (100dvh - 2 * var(--py)) * var(--ar));
+  background:rgba(251,246,236,.06); box-shadow:0 14px 40px rgba(0,0,0,.35); user-select:none; }
+.lb-count { position:absolute; top:18px; left:50%; transform:translateX(-50%); padding:5px 14px;
+  border-radius:999px; background:rgba(251,246,236,.14); font-size:15px; letter-spacing:.06em;
+  font-variant-numeric:tabular-nums; pointer-events:none; }
+.lb-close, .lb-prev, .lb-next { position:absolute; border:0; padding:0; border-radius:50%; cursor:pointer;
+  font:600 26px/1 Fredoka, sans-serif; transition:transform .15s, background .2s, opacity .2s; }
+.lb-close { top:12px; right:14px; width:42px; height:42px; background:var(--paper); color:var(--ink);
+  box-shadow:0 3px 0 rgba(0,0,0,.25); }
+.lb-close:hover { transform:scale(1.08); }
+.lb-prev, .lb-next { top:50%; width:54px; height:54px; margin-top:-27px;
+  background:rgba(251,246,236,.14); color:var(--paper); }
+.lb-prev { left:16px; } .lb-next { right:16px; }
+.lb-prev:hover, .lb-next:hover { background:rgba(251,246,236,.3); }
+.lb-prev:disabled, .lb-next:disabled { opacity:0; pointer-events:none; }
+#lightbox.single .lb-prev, #lightbox.single .lb-next, #lightbox.single .lb-count { display:none; }
+#lightbox button:focus-visible { outline:3px solid var(--blue); outline-offset:2px; }
+/* 手机：照片占满屏宽，靠左右滑 */
+@media (hover:none), (max-width:767px) {
+  #lightbox { --px:0px; --py:60px; }
+  .lb-slide img { border-radius:0; box-shadow:none; }
+  .lb-prev, .lb-next { display:none; }
+}
+
+/* ---------- 密码页（加密站点才出现，见 src/main.js） ---------- */
+#lock { position:fixed; inset:0; z-index:90; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:10px; margin:0; padding:24px; box-sizing:border-box; background:var(--paper); color:var(--ink);
+  text-align:center; font-family:var(--zh); }
+#lock[hidden] { display:none; }
+.lock-title { margin:0; font-size:clamp(22px, 6vw, 32px); font-weight:400; }
+.lock-hint { margin:0 0 8px; opacity:.7; font-size:16px; }
+.lock-fields { display:flex; flex-direction:column; align-items:center; gap:12px; width:min(280px, 100%); }
+.lock-fields[hidden] { display:none; }
+.lock-pw { box-sizing:border-box; width:100%; padding:10px 16px; border:2px solid var(--ring); border-radius:999px;
+  background:var(--cream); color:var(--ink); font:inherit; font-size:17px; text-align:center; }
+.lock-pw:focus { outline:3px solid var(--blue); outline-offset:1px; }
+.lock-remember { display:flex; align-items:center; gap:6px; font-size:15px; cursor:pointer; user-select:none; }
+.lock-remember input { width:18px; height:18px; margin:0; accent-color:var(--accent); }
+#lock button { font:inherit; font-size:17px; border:0; border-radius:999px; padding:10px 34px; cursor:pointer;
+  background:var(--accent); color:#fff; box-shadow:0 3px 0 #c96f52; }
+#lock button:disabled { opacity:.6; cursor:wait; }
+#lock button:focus-visible { outline:3px solid var(--blue); outline-offset:2px; }
+.lock-msg { margin:4px 0 0; min-height:1.6em; font-size:15px; line-height:1.6; max-width:22em; }
+.lock-msg:empty { visibility:hidden; }
