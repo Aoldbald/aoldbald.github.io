@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Untitled Love Story</title>
+<link rel="icon" href="data:,">
+<script>
+  // 深色 / 浅色在首帧之前就定好（规则同 src/theme.js：手动选过的优先，否则跟系统），免得先亮后暗闪一下
+  try {
+    var t = null;
+    try { t = localStorage.getItem('theme'); } catch (e) {}
+    document.documentElement.dataset.theme = t === 'dark' || t === 'light' ? t
+      : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<header id="title"><h1></h1><p></p></header>
+<div id="labels"></div>
+<nav id="bar"><button id="home" type="button">🗺️ 全景</button><button id="music-btn" type="button" aria-pressed="true" aria-label="背景音乐">🎵</button><button id="theme-btn" type="button" aria-pressed="false" aria-label="深色模式"></button></nav>
+<!-- 背景音乐：首屏不下载（preload="none"），第一次点击 / 按键后由 src/music.js 开始播放 -->
+<audio id="music" src="audio/debussy-serenade-for-the-doll.mp3" preload="none" loop></audio>
+<aside id="card" aria-label="地点卡片" aria-hidden="true">
+  <div class="card-handle" aria-hidden="true"><span></span></div>
+  <div class="card-nav">
+    <button class="card-prev" type="button" aria-label="上一站">上一站</button>
+    <span class="card-count"></span>
+    <button class="card-next" type="button" aria-label="下一站">下一站</button>
+    <button class="card-close" type="button" aria-label="关闭">×</button>
+  </div>
+  <button class="card-share" type="button" hidden>保存分享图</button>
+  <div class="card-body">
+    <div class="card-gallery"></div>
+    <h2 class="card-name"></h2>
+    <div class="card-meta"></div>
+    <p class="card-story"></p>
+  </div>
+</aside>
+<dialog id="lightbox" aria-label="照片">
+  <div class="lb-strip"></div>
+  <div class="lb-count" aria-live="polite"></div>
+  <button class="lb-close" type="button" aria-label="关闭">×</button>
+  <button class="lb-prev" type="button" aria-label="上一张"></button>
+  <button class="lb-next" type="button" aria-label="下一张"></button>
+</dialog>
+<dialog id="share" aria-label="分享图">
+  <div class="share-panel">
+    <button class="share-close" type="button" aria-label="关闭">×</button>
+    <img alt="">
+    <button class="share-save" type="button">保存图片</button>
+    <p class="share-tip">手机上也可以长按图片保存</p>
+  </div>
+</dialog>
+<div id="loading" role="status">小世界加载中…</div>
+<!-- 密码页：只在加密站点（有 data/lock.json）出现，由 src/main.js 控制；本机明文开发时一直藏着 -->
+<form id="lock" hidden>
+  <h2 class="lock-title">这是一个只给你的小世界</h2>
+  <p class="lock-hint">密码在相框背面 ✨</p>
+  <div class="lock-fields">
+    <input class="lock-pw" type="password" name="password" placeholder="密码" aria-label="密码" autocomplete="current-password" required>
+    <label class="lock-remember"><input type="checkbox" name="remember" checked> 记住我</label>
+    <button type="submit">打开</button>
+  </div>
+  <p class="lock-msg" role="alert"></p>
+</form>
+<div id="fatal" hidden></div>
+
+<script>
+  // 启动前出错的兜底（main.js 跑起来以后由它自己处理）：显示提示，不白屏
+  var FAIL = '小世界加载失败了，刷新试试？或者点右上角「在浏览器打开」';
+  function __fatal(msg) {
+    var f = document.getElementById('fatal');
+    if (window.__started || !f.hidden) return;        // 已经在提示了（比如“浏览器太旧”）就别覆盖
+    f.textContent = msg || FAIL; f.hidden = false;
+    document.getElementById('loading').hidden = true;
+  }
+  // 不支持 importmap 的老浏览器（含部分 App 内置浏览器）直接提示
+  if (!(HTMLScriptElement.supports && HTMLScriptElement.supports('importmap'))) {
+    __fatal('你的浏览器太旧，打不开这个小世界～请点右上角「在浏览器打开」');
+  }
+  // 模块解析/执行出错（比如 import 解析不了）：只认我们自己的脚本或模块解析错误，App 注入的脚本报错不管
+  window.addEventListener('error', function (e) {
+    if (/\/(src|vendor)\/[^?#]*\.js/.test(e.filename || '') || /module|specifier/i.test(e.message || '')) __fatal();
+  });
+  // 15 秒还没好：提示文字换成失败文案（真加载完了这条会自己消失）
+  setTimeout(function () {
+    var l = document.getElementById('loading');
+    if (!window.__started && !window.__locked && !l.hidden) l.textContent = FAIL;   // 等过密码就不按这个钟算
+  }, 15000);
+</script>
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three/build/three.module.min.js",
+  "three/addons/": "./vendor/three/examples/jsm/"
+} }
+</script>
+<!-- 模块（或它 import 的文件）下载失败时触发 onerror -->
+<script type="module" src="src/main.js" onerror="__fatal()"></script>
+</body>
+</html>

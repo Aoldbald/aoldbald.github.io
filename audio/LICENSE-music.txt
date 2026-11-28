@@ -1,0 +1,37 @@
+Background music: debussy-serenade-for-the-doll.mp3
+=====================================================
+
+Piece:      Claude Debussy (1862-1918), "Serenade of the Doll"
+            (Children's Corner, L. 113, No. 3; 1906-1908)
+Performer:  Pracchia-78 (Wikipedia / Wikimedia Commons user), who produced the
+            recording himself by rendering the score through a sampled concert
+            grand piano (virtual instrument "Maestro Concert Grand v2",
+            GigaSampler, Yamaha CF3 samples). It is a virtual-piano rendering,
+            not a recording of a live performance.
+
+Source:     Wikimedia Commons, "File:Claude Debussy - Children's Corner.ogg"
+            https://commons.wikimedia.org/wiki/File:Claude_Debussy_-_Children%27s_Corner.ogg
+            (originally uploaded to it.wikipedia by Pracchia-78, moved to Commons
+            with FileImporter; Ogg Vorbis, 13,156,000 bytes,
+            SHA-1 634b48a3a6eca2d2f186bbd55ddcfeb28fd32d5f, 16:32 for all six pieces)
+
+License:    Public domain.
+            The recording itself carries the Commons template {{PD-self}}: the
+            author (Pracchia-78) released this work into the public domain
+            worldwide and grants anyone the right to use it for any purpose,
+            without any conditions. The composition is also public domain
+            (Debussy died in 1918). Commons metadata: LicenseShortName
+            "Public domain", Copyrighted "False", AttributionRequired "false".
+            The file description says (Italian): "File da me prodotto mediante
+            sintetizzatore virtuale ..." ("File produced by me with a virtual
+            synthesizer ...").
+
+What we changed:
+            Cut out No. 3 (390.5 s - 566.8 s of the original file, 2:56),
+            level lowered by 8 dB (so it plays as quiet background music even
+            where the page cannot set the volume, e.g. iPhone), 0.4 s fade-in
+            and 2 s fade-out added, metadata removed, re-encoded to MP3
+            128 kbit/s 44.1 kHz stereo with ffmpeg 8.0.1
+            (filter: volume=-8dB,afade=t=in:st=0:d=0.4,afade=t=out:st=174.3:d=2).
+
+No attribution is required; this file is kept to record where the music came from.
